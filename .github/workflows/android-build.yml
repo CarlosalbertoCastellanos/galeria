@@ -1,22 +1,24 @@
 name: Build Android APK and Deploy to Google Drive
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
+  
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 1
     
     - name: Setup Java
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
-        java-version: '21'  # Actualizado a Java 21
+        java-version: '21'
+        cache: 'gradle'
     
     - name: Setup Android SDK
       uses: android-actions/setup-android@v2
@@ -25,6 +27,7 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: 20
+        cache: 'pnpm'
     
     - name: Setup PNPM
       uses: pnpm/action-setup@v2
@@ -47,7 +50,7 @@ jobs:
           ${{ runner.os }}-pnpm-store-
     
     - name: Install dependencies
-      run: pnpm install
+      run: pnpm install --frozen-lockfile
       
     - name: Install test types
       run: pnpm add -D @types/jest
@@ -59,13 +62,10 @@ jobs:
         declare function expect(actual: any): any;
         EOL
     
-    - name: Modify package.json for build
-      run: |
-        # Crear un script de build temporal que ignore las verificaciones de tipos
-        sed -i 's/"build": "tsc && vite build"/"build": "vite build"/g' package.json
-    
     - name: Build web app
-      run: pnpm build
+      run: |
+        jq '.scripts.build = "vite build"' package.json > package.json.tmp && mv package.json.tmp package.json
+        pnpm build
     
     - name: Add Android platform
       run: npx cap add android
@@ -77,21 +77,35 @@ jobs:
       run: |
         cd android
         chmod +x ./gradlew
-        ./gradlew assembleDebug
+        ./gradlew assembleDebug --no-daemon --parallel
+    
+    - name: Generate APK filename with timestamp
+      id: apk-filename
+      run: |
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        echo "APK_FILENAME=miapp-galeria-${TIMESTAMP}-${GITHUB_SHA::7}.apk" >> $GITHUB_ENV
     
     - name: Locate and rename APK
       run: |
-        cp android/app/build/outputs/apk/debug/app-debug.apk ./miapp-galeria.apk
+        cp android/app/build/outputs/apk/debug/app-debug.apk ./${{ env.APK_FILENAME }}
+      
+    - name: Upload APK as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: android-apk
+        path: ./${{ env.APK_FILENAME }}
+        retention-days: 14
       
     - name: Upload APK to Google Drive
       uses: adityak74/google-drive-upload-git-action@main
       with:
         credentials: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}
-        filename: miapp-galeria.apk
+        filename: ${{ env.APK_FILENAME }}
         folderId: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
-        name: miapp-galeria-${{ github.sha }}.apk
+        name: ${{ env.APK_FILENAME }}
         mimeType: "application/vnd.android.package-archive"
-        overwrite: true
-
+        overwrite: false
+        
     - name: Cleanup
-      run: rm -f credentials.json miapp-galeria.apk
+      if: always()
+      run: rm -f credentials.json ${{ env.APK_FILENAME }}
