@@ -55,18 +55,6 @@ jobs:
     - name: Install test types
       run: pnpm add -D @types/jest
     
-    - name: Create test-types.d.ts
-      run: |
-        cat > src/test-types.d.ts << 'EOL'
-        declare function test(name: string, fn: () => void): void;
-        declare function expect(actual: any): any;
-        EOL
-    
-    - name: Build web app
-      run: |
-        jq '.scripts.build = "vite build"' package.json > package.json.tmp && mv package.json.tmp package.json
-        pnpm build
-    
     - name: Add Android platform
       run: npx cap add android
     
@@ -90,7 +78,7 @@ jobs:
         cp android/app/build/outputs/apk/debug/app-debug.apk ./${{ env.APK_FILENAME }}
       
     - name: Upload APK as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4.6.2
       with:
         name: android-apk
         path: ./${{ env.APK_FILENAME }}
