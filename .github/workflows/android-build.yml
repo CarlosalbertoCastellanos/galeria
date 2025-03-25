@@ -18,21 +18,19 @@ jobs:
       with:
         node-version: 20
     
-    # Setup PNPM first, before any pnpm command is used
+    # Use a specific version of pnpm action that is known to be stable
     - name: Setup PNPM
-      uses: pnpm/action-setup@v4
+      uses: pnpm/action-setup@v2.2.4
       with:
         version: 8
         run_install: false
     
-    # Now we can use pnpm for caching
     - name: PNPM Cache
       uses: actions/cache@v4
       with:
         path: |
           ~/.pnpm-store
           node_modules
-          */*/node_modules
         key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
         restore-keys: |
           ${{ runner.os }}-pnpm-
@@ -44,8 +42,7 @@ jobs:
       run: pnpm add -D @types/jest
       
     - name: Build web app
-      run: |
-        pnpm build
+      run: pnpm build
     
     - name: Add Android platform
       run: npx cap add android
@@ -58,7 +55,6 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '21'
-        cache: 'gradle'
     
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
