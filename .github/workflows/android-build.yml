@@ -48,9 +48,17 @@ jobs:
     
     - name: Install dependencies
       run: pnpm install
+      
+    - name: Install test types
+      run: pnpm add -D @types/jest
     
-    - name: Build web app
-      run: pnpm build
+    - name: Create tsconfig for build
+      run: |
+        cp tsconfig.json tsconfig.build.json
+        sed -i 's/"include": \[/"include": \[\n    "src\/**\/*.tsx",\n    "src\/**\/*.ts",\n    "!src\/**\/*.test.tsx",\n    !src\/**\/*.test.ts",/g' tsconfig.build.json
+    
+    - name: Build web app (excluding tests)
+      run: tsc -p tsconfig.build.json && vite build
     
     - name: Sync Capacitor
       run: npx cap sync android
