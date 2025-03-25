@@ -76,7 +76,6 @@ jobs:
           mimeType: "application/vnd.android.package-archive"
           overwrite: false
 
-
       - name: Cleanup
         if: always()
         run: rm -f credentials.json ${{ env.APK_FILENAME }}
