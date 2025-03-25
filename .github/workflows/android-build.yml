@@ -90,6 +90,7 @@ jobs:
         filename: miapp-galeria.apk
         folderId: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
         name: miapp-galeria-${{ github.sha }}.apk
+        mimeType: "application/vnd.android.package-archive"
         overwrite: true
 
     - name: Cleanup
