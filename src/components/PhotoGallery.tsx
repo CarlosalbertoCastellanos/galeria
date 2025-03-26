@@ -13,7 +13,6 @@ import {
   IonFab,
   IonFabButton,
   IonIcon,
-  IonAlert,
   IonSpinner,
 } from "@ionic/react";
 import { camera, trash } from "ionicons/icons";
@@ -21,7 +20,7 @@ import { takePhoto } from "../services/photoService";
 import Footer from "./Footer";
 import axios from "axios";
 import { server } from "../contants";
-import { useHistory, useParams } from "react-router";
+import { useParams } from "react-router";
 
 interface Photo {
   id: number;
@@ -33,9 +32,7 @@ interface Photo {
 const PhotoGallery = () => {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showAlert, setShowAlert] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const history = useHistory();
   const params = useParams<{ albumId: string }>();
 
   useEffect(() => {
@@ -55,31 +52,31 @@ const PhotoGallery = () => {
   const handleTakePhoto = async () => {
     try {
       setLoading(true);
-      const photo = await takePhoto(); // Ahora recibe un objeto con { path: File, format: string }
+      const photo = await takePhoto();
       if (!photo || !photo.path) return;
 
       const user = localStorage.getItem("userId");
       if (!user) return;
 
-      // El archivo ya está en photo.path
       const file = photo.path;
-
-      // Crear FormData y adjuntar el archivo
       const formData = new FormData();
       formData.append("file", file);
       formData.append("isPublic", "true");
 
-      await axios.post(
+      const { data } = await axios.post(
         `${server}images/user/${user}/album/${params.albumId}`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
 
-      // Crear una URL para previsualización
-      const newImg = URL.createObjectURL(file);
       setPhotos((prevPhotos) => [
         ...prevPhotos,
-        { img: newImg, isPublic: true, userId: Number(user), id: Date.now() },
+        {
+          img: data.imageUrl,
+          isPublic: true,
+          userId: Number(user),
+          id: data.id,
+        },
       ]);
     } catch (error) {
       console.error("Error taking photo:", error);
@@ -88,9 +85,15 @@ const PhotoGallery = () => {
     }
   };
 
-  const confirmDeletePhotos = () => {
-    setPhotos([]);
-    localStorage.removeItem("photos");
+  const handleDeletePhoto = async (photoId: number) => {
+    try {
+      await axios.delete(`${server}images/${photoId}`);
+      setPhotos((prevPhotos) =>
+        prevPhotos.filter((photo) => photo.id !== photoId)
+      );
+    } catch (error) {
+      console.error("Error deleting photo:", error);
+    }
   };
 
   return (
@@ -98,25 +101,10 @@ const PhotoGallery = () => {
       <IonHeader>
         <IonToolbar>
           <IonTitle>Galería de Fotos</IonTitle>
-          <IonButton slot="end" fill="clear" onClick={() => setShowAlert(true)}>
-            <IonIcon icon={trash} />
-          </IonButton>
         </IonToolbar>
       </IonHeader>
 
       <IonContent className="ion-padding">
-        <div
-          style={{ display: "flex", gap: "8px", alignItems: "center" }}
-          onClick={() => history.push("/")}
-        >
-          <IonImg
-            src="resources/regresar.svg"
-            alt="back"
-            style={{ width: "20px", height: "20px" }}
-          />
-          <p>Regresar</p>
-        </div>
-
         <p style={{ textAlign: "center", color: "gray" }}>
           {photos.length === 0
             ? "No hay fotos aún. ¡Toma una!"
@@ -133,13 +121,33 @@ const PhotoGallery = () => {
         <IonGrid>
           <IonRow>
             {photos.map((photo) => (
-              <IonCol size="6" size-md="4" key={photo.id}>
+              <IonCol
+                size="6"
+                size-md="4"
+                key={photo.id}
+                style={{ position: "relative" }}
+              >
                 <IonImg
                   src={photo.img}
                   alt="Foto"
                   style={{ borderRadius: "10px", cursor: "pointer" }}
                   onClick={() => setSelectedPhoto(photo.img)}
                 />
+                <IonButton
+                  fill="clear"
+                  color="danger"
+                  style={{
+                    position: "absolute",
+                    top: "5px",
+                    right: "5px",
+                    backgroundColor: "rgba(255, 0, 0, 0.7)",
+                    borderRadius: "50%",
+                    padding: "5px",
+                  }}
+                  onClick={() => handleDeletePhoto(photo.id)}
+                >
+                  <IonIcon icon={trash} />
+                </IonButton>
               </IonCol>
             ))}
           </IonRow>
@@ -150,17 +158,6 @@ const PhotoGallery = () => {
             <IonIcon icon={camera} />
           </IonFabButton>
         </IonFab>
-
-        <IonAlert
-          isOpen={showAlert}
-          onDidDismiss={() => setShowAlert(false)}
-          header="Eliminar Fotos"
-          message="¿Seguro que quieres borrar todas las fotos?"
-          buttons={[
-            { text: "Cancelar", role: "cancel" },
-            { text: "Eliminar", handler: confirmDeletePhotos },
-          ]}
-        />
 
         {selectedPhoto && (
           <div

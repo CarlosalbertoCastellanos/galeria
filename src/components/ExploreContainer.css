@@ -1,24 +1,45 @@
 .container {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 50%;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: 90%;
+  max-width: 400px;
+  /* Evita que se expanda demasiado en pantallas grandes */
+  padding: 20px;
 }
 
 .container strong {
-  font-size: 20px;
-  line-height: 26px;
+  font-size: 1.5rem;
+  /* Tamaño ajustable */
+  line-height: 1.3;
+  color: #333;
+  /* Color más oscuro para mejor contraste */
 }
 
 .container p {
-  font-size: 16px;
-  line-height: 22px;
-  color: #8c8c8c;
-  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #666;
+  /* Un poco más oscuro que #8c8c8c para mejor legibilidad */
+  margin: 10px 0;
 }
 
 .container a {
+  font-size: 1rem;
   text-decoration: none;
+  color: #007bff;
+  /* Color azul moderno */
+  font-weight: 500;
+  transition: color 0.3s ease-in-out;
+}
+
+.container a:hover {
+  color: #0056b3;
+  /* Un azul más oscuro en hover */
 }
