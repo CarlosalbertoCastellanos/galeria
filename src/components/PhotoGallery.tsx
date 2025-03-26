@@ -22,7 +22,9 @@ import Footer from './Footer';
 import axios from 'axios';
 import { server } from '../contants';
 import { useHistory } from 'react-router';
-import base64ToArrayBuffer from '../utils/base64ToBuffer';
+import { decode } from 'base64-arraybuffer';
+import dayjs from 'dayjs';
+
 interface Photos {
   id: number;
   isPublic: true;
@@ -53,15 +55,19 @@ const PhotoGallery = () => {
   const handleTakePhoto = async () => {
     setLoading(true);
     const photoUrl = await takePhoto();
-
-    setLoading(false);
     if (photoUrl) {
-      const user = localStorage.getItem('userId');
-      const formData = new FormData();
-      if (photoUrl?.base64String) {
-        const data = base64ToArrayBuffer(photoUrl?.base64String);
-
-        formData.append('file', data as any);
+      setLoading(false);
+      if (photoUrl.base64String) {
+        const blob = new Blob([new Uint8Array(decode(photoUrl.base64String))], {
+          type: `image/${photoUrl.format}`
+        });
+        const user = localStorage.getItem('userId');
+        const formData = new FormData();
+        const file = new File([blob], 'Name', {
+          lastModified: dayjs().unix(),
+          type: blob.type
+        });
+        formData.append('file', file);
         formData.append('isPublic', 'true');
         const newPhoto = await axios.post(
           server + `/images/user/${user}`,
@@ -72,10 +78,7 @@ const PhotoGallery = () => {
             }
           }
         );
-      }
-      let urlData = photoUrl?.webPath as any;
-      if (urlData) {
-        const updatedPhotos = [photoUrl, urlData?.data];
+        const updatedPhotos = [photoUrl, ...newPhoto.data];
         setPhotos(updatedPhotos);
       }
     }
