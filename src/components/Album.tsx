@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   IonButton,
   IonContent,
@@ -14,58 +14,75 @@ import {
   IonLabel,
   IonInput,
   IonModal,
-  IonCheckbox
-} from '@ionic/react';
-import { add, trash, close } from 'ionicons/icons';
-import Footer from './Footer';
-import axios from 'axios';
-import { server } from '../contants';
-import { useHistory } from 'react-router';
+  IonCheckbox,
+} from "@ionic/react";
+import { add, trash, close } from "ionicons/icons";
+import Footer from "./Footer";
+import axios from "axios";
+import { server } from "../contants";
+import { useHistory } from "react-router";
 
 const AlbumGallery = () => {
-  const getUser = localStorage.getItem('userId');
+  const getUser = localStorage.getItem("userId");
+  const history = useHistory();
+
   const [albums, setAlbums] = useState<
-    {
-      id: number;
-      name: string;
-      user_id: number;
-      isPublic: boolean;
-    }[]
+    { id: number; name: string; user_id: number; isPublic: boolean }[]
   >([]);
-  const [newAlbum, setNewAlbum] = useState({ name: '', isPublic: false });
+  const [newAlbum, setNewAlbum] = useState({ name: "", isPublic: false });
   const [showModal, setShowModal] = useState(false);
 
+  // Obtener álbumes del usuario
   useEffect(() => {
-    (async () => {
-      const getAlbums = await axios.get(`${server}user/${getUser}/album`);
-      const storedAlbums = getAlbums.data;
-      setAlbums(storedAlbums);
-    })();
-  }, []);
+    if (!getUser) return; // Evita la solicitud si no hay usuario
 
+    const fetchAlbums = async () => {
+      try {
+        const response = await axios.get(`${server}user/${getUser}/album`);
+        setAlbums(response.data);
+      } catch (error) {
+        console.error("Error obteniendo los álbumes:", error);
+      }
+    };
+
+    fetchAlbums();
+  }, [getUser]); // Se vuelve a ejecutar si `getUser` cambia
+
+  // Guardar álbumes en localStorage cuando cambian
   useEffect(() => {
-    localStorage.setItem('albums', JSON.stringify(albums));
+    if (albums.length > 0) {
+      localStorage.setItem("albums", JSON.stringify(albums));
+    }
   }, [albums]);
 
+  // Crear un nuevo álbum
   const handleCreateAlbum = async () => {
-    if (newAlbum.name.trim() === '') return;
+    if (newAlbum.name.trim() === "") return;
+    if (!getUser) return; // Verificación adicional por seguridad
+
     try {
-      const dataUser = await axios.post(
+      const response = await axios.post(
         `${server}user/${getUser}/album`,
         newAlbum
       );
-      setAlbums([...albums, { ...dataUser.data }]);
-      setNewAlbum({ name: '', isPublic: false });
+      setAlbums((prev) => [...prev, response.data]);
+      setNewAlbum({ name: "", isPublic: false });
       setShowModal(false);
     } catch (error) {
-      console.error('Error al crear el álbum:', error);
+      console.error("Error al crear el álbum:", error);
     }
   };
-  const history = useHistory();
 
-  const handleDeleteAlbum = (albumName: string) => {
-    const updatedAlbums = albums.filter((album) => album.name !== albumName);
-    setAlbums(updatedAlbums);
+  // Eliminar álbum
+  const handleDeleteAlbum = async (albumId: number) => {
+    if (!getUser) return;
+
+    try {
+      await axios.delete(`${server}user/${getUser}/album/${albumId}`);
+      setAlbums((prev) => prev.filter((album) => album.id !== albumId));
+    } catch (error) {
+      console.error("Error al eliminar el álbum:", error);
+    }
   };
 
   return (
@@ -76,26 +93,37 @@ const AlbumGallery = () => {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent className='ion-padding'>
+      <IonContent className="ion-padding">
         <IonList>
           {albums.length === 0 ? (
-            <p style={{ textAlign: 'center', color: 'gray' }}>
+            <p style={{ textAlign: "center", color: "gray" }}>
               No hay álbumes. ¡Crea uno!
             </p>
           ) : (
-            albums.map((album, index) => (
+            albums.map((album) => (
               <IonItem
-                key={index}
+                key={album.id}
                 button
                 onClick={() => history.push(`/${album.id}/gallery`)}
               >
                 <IonLabel>{album.name}</IonLabel>
+                <IonButton
+                  fill="clear"
+                  color="danger"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Evita abrir el álbum al borrar
+                    handleDeleteAlbum(album.id);
+                  }}
+                >
+                  <IonIcon icon={trash} />
+                </IonButton>
               </IonItem>
             ))
           )}
         </IonList>
 
-        <IonFab vertical='bottom' horizontal='center' slot='fixed'>
+        {/* Botón flotante para agregar álbum */}
+        <IonFab vertical="bottom" horizontal="center" slot="fixed">
           <IonFabButton onClick={() => setShowModal(true)}>
             <IonIcon icon={add} />
           </IonFabButton>
@@ -107,13 +135,13 @@ const AlbumGallery = () => {
           onDidDismiss={() => setShowModal(false)}
           animated
         >
-          <IonContent className='ion-padding'>
+          <IonContent className="ion-padding">
             <IonHeader>
               <IonToolbar>
                 <IonTitle>Nuevo Álbum</IonTitle>
                 <IonButton
-                  slot='end'
-                  fill='clear'
+                  slot="end"
+                  fill="clear"
                   onClick={() => setShowModal(false)}
                 >
                   <IonIcon icon={close} />
@@ -122,14 +150,11 @@ const AlbumGallery = () => {
             </IonHeader>
 
             <IonItem>
-              <IonLabel position='stacked'>Nombre del álbum</IonLabel>
+              <IonLabel position="stacked">Nombre del álbum</IonLabel>
               <IonInput
                 value={newAlbum.name}
                 onIonChange={(e) =>
-                  setNewAlbum((current) => ({
-                    ...current,
-                    name: e.detail.value!
-                  }))
+                  setNewAlbum((prev) => ({ ...prev, name: e.detail.value! }))
                 }
               />
             </IonItem>
@@ -139,9 +164,9 @@ const AlbumGallery = () => {
               <IonCheckbox
                 checked={newAlbum.isPublic}
                 onIonChange={(e) =>
-                  setNewAlbum((current) => ({
-                    ...current,
-                    isPublic: e.detail.checked
+                  setNewAlbum((prev) => ({
+                    ...prev,
+                    isPublic: e.detail.checked,
                   }))
                 }
               />
@@ -149,12 +174,12 @@ const AlbumGallery = () => {
 
             <div
               style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                marginTop: '16px'
+                display: "flex",
+                justifyContent: "flex-end",
+                marginTop: "16px",
               }}
             >
-              <IonButton color='medium' onClick={() => setShowModal(false)}>
+              <IonButton color="medium" onClick={() => setShowModal(false)}>
                 Cancelar
               </IonButton>
               <IonButton onClick={handleCreateAlbum}>Crear álbum</IonButton>
