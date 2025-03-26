@@ -22,6 +22,7 @@ import Footer from './Footer';
 import axios from 'axios';
 import { server } from '../contants';
 import { useHistory } from 'react-router';
+import base64ToArrayBuffer from '../utils/base64ToBuffer';
 interface Photos {
   id: number;
   isPublic: true;
@@ -52,23 +53,31 @@ const PhotoGallery = () => {
   const handleTakePhoto = async () => {
     setLoading(true);
     const photoUrl = await takePhoto();
+
     setLoading(false);
     if (photoUrl) {
       const user = localStorage.getItem('userId');
       const formData = new FormData();
-      formData.append('file', photoUrl);
-      formData.append('isPublic', 'true');
-      const newPhoto = await axios.post(
-        server + `/images/user/${user}`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data'
+      if (photoUrl?.base64String) {
+        const data = base64ToArrayBuffer(photoUrl?.base64String);
+
+        formData.append('file', data as any);
+        formData.append('isPublic', 'true');
+        const newPhoto = await axios.post(
+          server + `/images/user/${user}`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
           }
-        }
-      );
-      const updatedPhotos = [photoUrl, ...newPhoto.data];
-      setPhotos(updatedPhotos);
+        );
+      }
+      let urlData = photoUrl?.webPath as any;
+      if (urlData) {
+        const updatedPhotos = [photoUrl, urlData?.data];
+        setPhotos(updatedPhotos);
+      }
     }
   };
 
