@@ -7,6 +7,7 @@ export const takePhoto = async () => {
       source: CameraSource.Prompt,
       quality: 90,
     });
+
     return photo || null;
   } catch (error) {
     console.error("Error al tomar la foto:", error);
