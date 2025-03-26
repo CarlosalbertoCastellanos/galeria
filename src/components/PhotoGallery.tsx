@@ -21,7 +21,7 @@ import { takePhoto } from '../services/photoService';
 import Footer from './Footer';
 import axios from 'axios';
 import { server } from '../contants';
-import { useHistory } from 'react-router';
+import { useHistory, useParams } from 'react-router';
 import { decode } from 'base64-arraybuffer';
 import dayjs from 'dayjs';
 
@@ -36,6 +36,7 @@ const PhotoGallery = () => {
   const [loading, setLoading] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const params = useParams<{ albumId: string }>();
 
   useEffect(() => {
     const storedPhotos = JSON.parse(localStorage.getItem('photos') || '[]');
@@ -57,20 +58,13 @@ const PhotoGallery = () => {
     const photoUrl = await takePhoto();
     if (photoUrl) {
       setLoading(false);
-      if (photoUrl.base64String) {
-        const blob = new Blob([new Uint8Array(decode(photoUrl.base64String))], {
-          type: `image/${photoUrl.format}`
-        });
+      if (photoUrl) {
         const user = localStorage.getItem('userId');
         const formData = new FormData();
-        const file = new File([blob], 'Name', {
-          lastModified: dayjs().unix(),
-          type: blob.type
-        });
-        formData.append('file', file);
+        formData.append('file', photoUrl.path);
         formData.append('isPublic', 'true');
         const newPhoto = await axios.post(
-          server + `/images/user/${user}`,
+          server + `images/user/${user}/album/${params.albumId}`,
           formData,
           {
             headers: {
@@ -78,7 +72,16 @@ const PhotoGallery = () => {
             }
           }
         );
-        const updatedPhotos = [photoUrl, ...newPhoto.data];
+        const newImg = URL.createObjectURL(photoUrl.path as File);
+        const updatedPhotos: Photos[] = [
+          ...photos,
+          {
+            img: newImg,
+            isPublic: true,
+            userId: 0,
+            id: 0
+          }
+        ];
         setPhotos(updatedPhotos);
       }
     }
