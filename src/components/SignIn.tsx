@@ -28,7 +28,7 @@ const SignIn = () => {
       });
 
       localStorage.setItem('token', data.accessToken);
-      localStorage.setItem('userId', data.accessToken);
+      localStorage.setItem('userId', data.userId);
       login();
       history.push('/');
     } catch (err) {
