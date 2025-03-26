@@ -61,7 +61,7 @@ const PhotoGallery = () => {
       if (photoUrl) {
         const user = localStorage.getItem('userId');
         const formData = new FormData();
-        formData.append('file', photoUrl.path);
+        formData.append('file', photoUrl as any);
         formData.append('isPublic', 'true');
         const newPhoto = await axios.post(
           server + `images/user/${user}/album/${params.albumId}`,
