@@ -40,7 +40,9 @@ const PhotoGallery = () => {
       try {
         const user = localStorage.getItem('userId');
         if (!user) return;
-        const { data } = await axios.get(`${server}images/user/${user}/`);
+        const { data } = await axios.get(
+          `${server}user/${user}/album/${params.albumId}/images/`
+        );
         setPhotos(data);
       } catch (error) {
         console.error('Error fetching photos:', error);
